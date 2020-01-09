@@ -50,10 +50,12 @@ typedef DWORD(__stdcall *pRtlDecompressBuffer)(
 
 
 
-DWORD getHash(const char *str) {
+DWORD getHash(const char *str)
+{
 
 	DWORD h = 0;
-	while (*str) {
+	while (*str) 
+	{
 		h = (h >> 12) | (h << (32 - 12));
 		h += *str >= 'a' ? *str - 32 : *str;
 		str++;
@@ -62,10 +64,12 @@ DWORD getHash(const char *str) {
 
 }
 
-DWORD getUnicodeHash(const wchar_t * str) {
+DWORD getUnicodeHash(const wchar_t * str) 
+{
 	DWORD h = 0;
 	PWORD ptr = (PWORD)str;
-	while (*ptr) {
+	while (*ptr)
+	{
 		h = (h >> 12) | (h << (32 - 12));
 		h += (BYTE)(*ptr) >= 'a' ? (BYTE)(*ptr) - 32 : (BYTE)(*ptr);
 		ptr++;
@@ -147,24 +151,27 @@ char * GetFunction(DWORD DLLhash,DWORD APIhash)
 
 		ptr = ptr->Flink;
 
-		if (!baseAddr) {
+		if (!baseAddr) 
 			continue;
-		}
+		
 
 		PIMAGE_DOS_HEADER pDos = (PIMAGE_DOS_HEADER)(baseAddr);
 		PIMAGE_NT_HEADERS pNt = (PIMAGE_NT_HEADERS)(baseAddr + pDos->e_lfanew);
 		PIMAGE_EXPORT_DIRECTORY pExport = (PIMAGE_EXPORT_DIRECTORY)(baseAddr + pNt->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_EXPORT].VirtualAddress);
-		if (!pExport) {
+		if (!pExport) 
+		{
 			continue;
 		}
 
 		if (getUnicodeHash(((decltype(pLdr->FullDllName)*)(DWORD*)&(pLdr->Reserved4))->Buffer) == DLLhash) {
 			DWORD* nameRVAs = (DWORD*)(baseAddr + pExport->AddressOfNames);
 
-			for (DWORD i = 0; i < pExport->NumberOfNames; i++) {
+			for (DWORD i = 0; i < pExport->NumberOfNames; i++) 
+			{
 				char* funName = (char*)(baseAddr + nameRVAs[i]);
 				//get address of function
-				if (func == NULL && getHash(funName) == APIhash) {
+				if (func == NULL && getHash(funName) == APIhash) 
+				{
 					WORD ordinal = ((WORD*)(baseAddr + pExport->AddressOfNameOrdinals))[i];
 					DWORD functionRVA = ((DWORD*)(baseAddr + pExport->AddressOfFunctions))[ordinal];
 					func = (char*)(baseAddr + functionRVA);
@@ -247,7 +254,8 @@ char* ApplySpace
 		MEM_COMMIT | MEM_RESERVE,
 		PAGE_EXECUTE_READWRITE);
 
-	if (NULL == baseAddress) {
+	if (NULL == baseAddress) 
+	{
 		baseAddress = (char *)pVirtualAlloc(
 			NULL,
 			pSection->SizeOfRawData + pSection->VirtualAddress,
@@ -264,13 +272,16 @@ void CopyToMemory(
 	char*pData,
 	char*address,
 	pCustomHead pcustomHead
-) {
+) 
+{
 
 	PIMAGE_SECTION_HEADER pSection = (PIMAGE_SECTION_HEADER)(pData + pcustomHead->offsetSection);
 
 
-	for (int i = 0; i < pcustomHead->numberOfSection; i++) {
-		if ((0 == pSection->VirtualAddress) || (0 == pSection->SizeOfRawData)) {
+	for (int i = 0; i < pcustomHead->numberOfSection; i++) 
+	{
+		if ((0 == pSection->VirtualAddress) || (0 == pSection->SizeOfRawData)) 
+		{
 			pSection++;
 			continue;
 		}
@@ -290,16 +301,18 @@ void Reloaction(char *address, pCustomHead pcustomHead) {
 	
 	PIMAGE_BASE_RELOCATION pRel = (PIMAGE_BASE_RELOCATION)(address + pcustomHead->offsetRelocation);
 	
-	if ((DA*)pRel == (DA*)pDos) {
+	if ((DA*)pRel == (DA*)pDos) 
 		return;
-	}
+	
 
-	while ((pRel->VirtualAddress + pRel->SizeOfBlock) != 0) {
+	while ((pRel->VirtualAddress + pRel->SizeOfBlock) != 0) 
+	{
 
 		WORD *pLocData = (WORD*)((PBYTE)pRel + sizeof(IMAGE_BASE_RELOCATION));
 		int numberOfReloc = (pRel->SizeOfBlock - sizeof(IMAGE_BASE_RELOCATION)) / sizeof(WORD);
 
-		for (int i = 0; i < numberOfReloc; i++) {
+		for (int i = 0; i < numberOfReloc; i++) 
+		{
 
 #ifdef _WIN64
 			if ((DWORD)(pLocData[i] & 0xf000) == 0xa000) {
@@ -338,17 +351,20 @@ void LoadDll(
 	FARPROC lpFuncAddress = NULL;
 	DA i = 0;
 
-	while (TRUE) {
-		if (0 == pImportTable->OriginalFirstThunk) {
+	while (TRUE) 
+	{
+		if (0 == pImportTable->OriginalFirstThunk) 
 			break;
-		}
+		
 
 		//load dll, get hmoudle
 		lpDllName = (char *)((DA)address + pImportTable->Name);
 		hDll = myGetModuleHandleA(lpDllName);
-		if (hDll == NULL) {
+		if (hDll == NULL)
+		{
 			hDll = myLoadLibraryA(lpDllName);
-			if (hDll == NULL) {
+			if (hDll == NULL) 
+			{
 				pImportTable++;
 				continue;
 			}
@@ -358,17 +374,20 @@ void LoadDll(
 		i = 0;
 		lpImportNameArray = (PIMAGE_THUNK_DATA)((DA)address + pImportTable->OriginalFirstThunk);
 		lpImportFuncAddrArray = (PIMAGE_THUNK_DATA)((DA)address + pImportTable->FirstThunk);
-		while (TRUE) {
-			if (lpImportNameArray[i].u1.AddressOfData == 0) {
+		while (TRUE)
+		{
+			if (lpImportNameArray[i].u1.AddressOfData == 0) 
 				break;
-			}
+			
 
 			lpImportByName = (PIMAGE_IMPORT_BY_NAME)((DA)address + lpImportNameArray[i].u1.AddressOfData);
 
-			if (0x80000000 & lpImportNameArray[i].u1.Ordinal) {
+			if (0x80000000 & lpImportNameArray[i].u1.Ordinal) 
+			{
 				lpFuncAddress = myGetProcAddress(hDll, (LPCSTR)(lpImportNameArray[i].u1.Ordinal & 0x0000FFFF));
 			}
-			else {
+			else 
+			{
 				lpFuncAddress = myGetProcAddress(hDll, (LPCSTR)lpImportByName->Name);
 			}
 			lpImportFuncAddrArray[i].u1.Function = (DA)lpFuncAddress;
@@ -380,7 +399,8 @@ void LoadDll(
 
 }
 
-void Run(pCustomHead pcustomHead, char *address) {
+void Run(pCustomHead pcustomHead, char *address) 
+{
 
 	DA * ExeEntry = (DA*)(address + pcustomHead->entryPoint);
 
@@ -453,7 +473,8 @@ void func() {
 }
 
 
-int main(int argc, char *argv[], char ** envp) {
+int main(int argc, char *argv[], char ** envp) 
+{
 
 	func();
 
